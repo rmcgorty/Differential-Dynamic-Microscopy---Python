@@ -266,10 +266,10 @@ def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100
     params = np.array([1e8, 15.0, bg, 0.99, 1e6, 0.8, 1.0])
     if d is not None:
         params[2] = bg
-        params[0] = (d.max() - bg)*0.95
+        params[0] = (d.max() - bg)*0.75
     w = np.where((d-params[2])>(0.6*(d.max()-params[2])))
     if len(w[0])>0:
-        params[1]=3*(w[0][0]/fps)
+        params[1]=1*(w[0][0]/fps)
     else:
         params[1] = 1./fps
     if params[1]==0:
@@ -285,10 +285,14 @@ def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100
         fixed[3] = True
         fixed[6] = True
     if double==False:
-        params[4] = 0
+        params[4] = 0 #amplitude of 2nd exponential
         fixed[4] = True
-        fixed[5] = True
-        fixed[6] = True
+        fixed[5] = True #tau of 2nd exponential
+        fixed[6] = True #alpha (str exp) of 2nd exponential
+    else:
+        params[0] *= 0.5
+        params[4] = params[0]
+        params[5] = 0.1*params[1]
     return params, minpars, maxpars, limitedmin, limitedmax, fixed
 
 
