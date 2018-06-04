@@ -290,8 +290,9 @@ def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100
         fixed[5] = True #tau of 2nd exponential
         fixed[6] = True #alpha (str exp) of 2nd exponential
     else:
-        params[0] *= 0.5
-        params[4] = params[0]
+        orig_amp = params[0]
+        params[0] = 0.9*orig_amp
+        params[4] = 0.1*orig_amp
         params[5] = 0.1*params[1]
     return params, minpars, maxpars, limitedmin, limitedmax, fixed
 
