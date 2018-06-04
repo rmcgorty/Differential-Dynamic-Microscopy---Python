@@ -266,7 +266,7 @@ def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100
     params = np.array([1e8, 15.0, bg, 0.99, 1e6, 0.8, 1.0])
     if d is not None:
         params[2] = bg
-        params[0] = (d.max() - bg)*0.75
+        params[0] = (d.max() - bg)*0.85
     w = np.where((d-params[2])>(0.6*(d.max()-params[2])))
     if len(w[0])>0:
         params[1]=1*(w[0][0]/fps)
