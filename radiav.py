@@ -16,8 +16,8 @@ def radav(arr, x, y, le):
 			if (i < xdim) and (j < ydim) and (i > 0) and (j > 0):
 				temp = scipy.sqrt((i-x)**2 + (j-y)**2)
 				if (round(temp) < sizeofrad):
-					radsum[temp] += arr[i, j]
-					numsum[temp] += 1
+					radsum[int(temp)] += arr[i, j]
+					numsum[int(temp)] += 1
 	return radsum/numsum, numsum
 	
 
