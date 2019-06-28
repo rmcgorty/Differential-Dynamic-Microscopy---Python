@@ -244,11 +244,76 @@ def dTheory(x,a1,t1,bg,s1,a2,t2,s2):
     g2 = np.exp(-1 * (x / t2)**s2)
     d = a1 * (1 - g1) + a2 * (1 - g2) + bg
     return d
+
+def dTheoryTwoColors(x,a1,t1,bg1,s1,a2,bg2,a3,bg3):
+    #First step: divide up into three chunks
+    num_time_pts = len(x)
+    num_time_pts_per_condition = num_time_pts / 3
+    times_bb = x[0:num_time_pts_per_condition]
+    times_rr = x[num_time_pts_per_condition:2*num_time_pts_per_condition]
+    times_br = x[2*num_time_pts_per_condition:]
+    
+    #Calculate 'g' for all three -- USING SAME TIME (t1) and same s1
+    g_bb = np.exp(-1 * (times_bb / t1)**s1)
+    g_rr = np.exp(-1 * (times_rr / t1)**s1)
+    g_br = np.exp(-1 * (times_br / t1)**s1)
+    
+    #all have different amplitudes and backgrounds
+    d_bb = a1 * (1-g_bb) + bg1
+    d_rr = a2 * (1-g_rr) + bg2
+    d_br = a3 * (1-g_br) + bg3
+    
+    d = np.hstack((d_bb,d_rr,d_br))
+    return d
+
     
 def dTheorySingle(x,a1,t1,bg,s1=1.0):
     g1 = np.exp(-1 * (x / t1))**s1
     d = a1 * (1 - g1) + bg
     return d
+
+
+def returnReasonableParamsTwoColors(d=None, fps=40.0, double=True, stretched=True, bg=100):
+    '''
+    Function to return reasonable parameters for fits
+    The parameters are:
+        * amplitude
+        * decay time
+        * background
+        * alpha (stretching exponent)
+    :param d:
+    :param double:
+    :param stretched:
+    :return:
+    '''
+    num_time_pts = len(d)
+    num_time_pts_per_condition = num_time_pts / 3
+    d_bb = d[0:num_time_pts_per_condition]
+    d_rr = d[num_time_pts_per_condition:2*num_time_pts_per_condition]
+    d_br = d[2*num_time_pts_per_condition:]
+      
+    params = np.array([1e2, 1.0, bg, 0.99, 1e2, bg, 1e2, bg])
+    if d is not None:
+        params[2] = bg
+        params[0] = (d_bb.max() - bg)*0.85
+        params[5] = bg
+        params[4] = (d_rr.max() - bg)*0.85
+        params[7] = d_br.min()
+        params[6] = (d_br.max() - d_br.min())*0.9
+    w = np.where((d_bb-params[2])>(0.6*(d_bb.max()-params[2])))
+    if len(w[0])>0:
+        params[1]=1*(w[0][0]/fps)
+    else:
+        params[1] = 1./fps
+    if params[1]==0:
+        params[1]=3./fps
+    minpars = np.array([0, 1e-6, 0, 0.1, 0, 0, 0, 0])
+    maxpars = np.array([1e22, 1e4, 1e18, 2.0, 1e22, 1e18, 1e22, 1e18])
+    fixed = np.repeat(False, len(params))
+    limitedmin = np.repeat(True, len(params))
+    limitedmax = np.repeat(True, len(params))
+    
+    return params, minpars, maxpars, limitedmin, limitedmax, fixed
 
 def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100):
     '''
@@ -297,6 +362,47 @@ def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100
     return params, minpars, maxpars, limitedmin, limitedmax, fixed
 
 
+def newFitTwoColors(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=True,maxiter=600,
+           factor=1e-3, quiet=False):
+    parinfo = [
+        {'n': 0, 'value': params[0], 'limits': [minpars[0], maxpars[0]], 'limited': [limitedmin[0], limitedmax[0]],
+         'fixed': fixed[0], 'parname': "Amplitude1", 'error': 0, 'step':0},
+        {'n': 1, 'value': params[1], 'limits': [minpars[1], maxpars[1]], 'limited': [limitedmin[1], limitedmax[1]],
+         'fixed': fixed[1], 'parname': "Time1", 'error': 0, 'step':0.01},
+        {'n': 2, 'value': params[2], 'limits': [minpars[2], maxpars[2]], 'limited': [limitedmin[2], limitedmax[2]],
+         'fixed': fixed[2], 'parname': "Background1", 'error': 0, 'step':0},
+        {'n': 3, 'value': params[3], 'limits': [minpars[3], maxpars[3]], 'limited': [limitedmin[3], limitedmax[3]],
+         'fixed': fixed[3], 'parname': "Alpha1", 'error': 0, 'step':0.005},
+        {'n': 4, 'value': params[4], 'limits': [minpars[4], maxpars[4]], 'limited': [limitedmin[4], limitedmax[4]],
+         'fixed': fixed[4], 'parname': "Amplitude2", 'error': 0, 'step':0},
+        {'n': 5, 'value': params[5], 'limits': [minpars[5], maxpars[5]], 'limited': [limitedmin[5], limitedmax[5]],
+         'fixed': fixed[5], 'parname': "Background2", 'error': 0, 'step':0},
+        {'n': 6, 'value': params[6], 'limits': [minpars[6], maxpars[6]], 'limited': [limitedmin[6], limitedmax[6]],
+         'fixed': fixed[6], 'parname': "Amplitude3", 'error': 0, 'step':0},
+        {'n': 7, 'value': params[7], 'limits': [minpars[7], maxpars[7]], 'limited': [limitedmin[7], limitedmax[7]],
+         'fixed': fixed[7], 'parname': "Background3", 'error': 0, 'step':0}
+    ]
+
+    def mpfitfun(x, y, err, logfit):
+        if err is None:
+            def f(p, fjac=None):
+                if logfit:
+                    return [0, (np.log(y) - np.log(dTheoryTwoColors(x, *p)))]
+                else:
+                    return [0, (y - dTheoryTwoColors(x, *p))]
+        else:
+            def f(p, fjac=None):
+                return [0, (y - dTheoryTwoColors(x, *p)) / err]
+        return f
+    mp = mpfit.mpfit(mpfitfun(times, dData, err, logfit), parinfo=parinfo, quiet=quiet, maxiter=maxiter,factor=factor)
+
+    if mp.status == 0:
+        raise Exception(mp.errmsg)
+    mpp = mp.params
+    mpperr = mp.perror
+    chi2 = mp.fnorm
+
+    return mpp, dTheoryTwoColors(times,*mpp) ,mpperr,chi2
 
 
 def newFit(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=True,maxiter=600,
@@ -379,6 +485,65 @@ def newFit_ALL(dData, times, params, minpars, maxpars, limitedmin, limitedmax,
         else:
             params = fit
     return allFitResults, allTheory, allFitErrors, allchi2
+
+def newFitLeastsqTwoColor(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=True,maxiter=600,
+           factor=1e-3, single=True):
+    parinfo = [
+        {'n': 0, 'value': params[0], 'limits': [minpars[0], maxpars[0]], 'limited': [limitedmin[0], limitedmax[0]],
+         'fixed': fixed[0], 'parname': "Amplitude1", 'error': 0, 'step':0},
+        {'n': 1, 'value': params[1], 'limits': [minpars[1], maxpars[1]], 'limited': [limitedmin[1], limitedmax[1]],
+         'fixed': fixed[1], 'parname': "Time1", 'error': 0, 'step':0.01},
+        {'n': 2, 'value': params[2], 'limits': [minpars[2], maxpars[2]], 'limited': [limitedmin[2], limitedmax[2]],
+         'fixed': fixed[2], 'parname': "Background1", 'error': 0, 'step':0},
+        {'n': 3, 'value': params[3], 'limits': [minpars[3], maxpars[3]], 'limited': [limitedmin[3], limitedmax[3]],
+         'fixed': fixed[3], 'parname': "Alpha1", 'error': 0, 'step':0.005},
+        {'n': 4, 'value': params[4], 'limits': [minpars[4], maxpars[4]], 'limited': [limitedmin[4], limitedmax[4]],
+         'fixed': fixed[4], 'parname': "Amplitude2", 'error': 0, 'step':0},
+        {'n': 5, 'value': params[5], 'limits': [minpars[5], maxpars[5]], 'limited': [limitedmin[5], limitedmax[5]],
+         'fixed': fixed[5], 'parname': "Background2", 'error': 0, 'step':0},
+        {'n': 6, 'value': params[6], 'limits': [minpars[6], maxpars[6]], 'limited': [limitedmin[6], limitedmax[6]],
+         'fixed': fixed[6], 'parname': "Amplitude3", 'error': 0, 'step':0},
+        {'n': 7, 'value': params[7], 'limits': [minpars[7], maxpars[7]], 'limited': [limitedmin[7], limitedmax[7]],
+         'fixed': fixed[7], 'parname': "Background3", 'error': 0, 'step':0}
+    ]
+
+    def leastsqfitfun(p, x, y, logfit, parinfo):
+        newp = np.zeros((len(parinfo)))
+        j = 0
+        for i in range(len(parinfo)):
+            if parinfo[i]['fixed']:
+                newp[i] = parinfo[i]['value']
+            else:
+                newp[i] = p[j]
+                j = j+1
+
+        if logfit:
+            diff = np.log(y) - np.log(dTheoryTwoColor(x, *newp))
+            return diff
+        else:
+            diff = y - dTheoryTwoColor(x, *newp)
+            return diff
+            
+    params_adjust = np.repeat(0,len(fixed)-fixed.sum()).astype(np.float)
+    j=0
+    for i in range(len(parinfo)):
+        if not parinfo[i]['fixed']:
+            params_adjust[j] = params[i]
+            j=j+1
+    
+    plsq = leastsq(leastsqfitfun, params_adjust, args = (times, dData, logfit, parinfo))
+    
+    newplsq = np.zeros((len(parinfo)))
+    j=0
+    for i in range(len(parinfo)):
+        if parinfo[i]['fixed']:
+            newplsq[i]=parinfo[i]['value']
+        else:
+            newplsq[i]=plsq[0][j]
+            j=j+1
+
+    return newplsq, dTheoryTwoColor(times,*newplsq)
+
     
 def newFitLeastsq(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=True,maxiter=600,
            factor=1e-3, single=True):
