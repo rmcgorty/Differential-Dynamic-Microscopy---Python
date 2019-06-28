@@ -518,10 +518,10 @@ def newFitLeastsqTwoColor(dData, times, params, minpars, maxpars, limitedmin, li
                 j = j+1
 
         if logfit:
-            diff = np.log(y) - np.log(dTheoryTwoColor(x, *newp))
+            diff = np.log(y) - np.log(dTheoryTwoColors(x, *newp))
             return diff
         else:
-            diff = y - dTheoryTwoColor(x, *newp)
+            diff = y - dTheoryTwoColors(x, *newp)
             return diff
             
     params_adjust = np.repeat(0,len(fixed)-fixed.sum()).astype(np.float)
@@ -542,7 +542,7 @@ def newFitLeastsqTwoColor(dData, times, params, minpars, maxpars, limitedmin, li
             newplsq[i]=plsq[0][j]
             j=j+1
 
-    return newplsq, dTheoryTwoColor(times,*newplsq)
+    return newplsq, dTheoryTwoColors(times,*newplsq)
 
     
 def newFitLeastsq(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=True,maxiter=600,
