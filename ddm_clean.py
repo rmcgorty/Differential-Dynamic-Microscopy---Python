@@ -250,6 +250,30 @@ def dTheorySingle(x,a1,t1,bg,s1=1.0):
     d = a1 * (1 - g1) + bg
     return d
 
+def dTheoryISF(x,c,t,s):
+    '''
+    x: independent variable: our lag time
+    c: the nonergodicity parameter --> SET TO 0 here
+    t: relaxation time (tau)
+    s: stretching exponent ("p" in Cho et al 2020)
+    '''
+    g1 = np.exp(-1.0*(x/t)**s)
+    d = g1
+    return d
+    
+
+def dTheoryNonErgISF(x,c,t,s):
+    '''
+    x: independent variable: our lag time
+    c: the nonergodicity parameter
+    t: relaxation time (tau)
+    s: stretching exponent ("p" in Cho et al 2020)
+    '''
+    g1 = np.exp(-1.0*(x/t)**s)
+    d = ((1-c)*g1) + c
+    return d
+
+
 def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100):
     '''
     Function to return reasonable parameters for fits
@@ -299,6 +323,39 @@ def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100
 
 
 
+def newFit_ISF(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=False,maxiter=600,
+               factor=1e-3, quiet=False):
+    parinfo = [
+        {'n': 0, 'value': params[0], 'limits': [minpars[0], maxpars[0]], 'limited': [limitedmin[0], limitedmax[0]],
+         'fixed': fixed[0], 'parname': "Nonerg", 'error': 0, 'step':0},
+        {'n': 1, 'value': params[1], 'limits': [minpars[1], maxpars[1]], 'limited': [limitedmin[1], limitedmax[1]],
+         'fixed': fixed[1], 'parname': "tau", 'error': 0, 'step':0},
+        {'n': 2, 'value': params[2], 'limits': [minpars[2], maxpars[2]], 'limited': [limitedmin[2], limitedmax[2]],
+         'fixed': fixed[2], 'parname': "Stretchexp", 'error': 0, 'step':0},
+    ]
+
+    def mpfitfun(x, y, err, logfit):
+        if err is None:
+            def f(p, fjac=None):
+                if logfit:
+                    return [0, (np.log(y) - np.log(dTheoryNonErgISF(x, *p)))]
+                else:
+                    return [0, (y - dTheoryNonErgISF(x, *p))]
+        else:
+            def f(p, fjac=None):
+                return [0, (y - dTheoryNonErgISF(x, *p)) / err]
+        return f
+    mp = mpfit.mpfit(mpfitfun(times, dData, err, logfit), parinfo=parinfo, quiet=quiet, maxiter=maxiter,factor=factor)
+
+    if mp.status == 0:
+        raise Exception(mp.errmsg)
+    mpp = mp.params
+    mpperr = mp.perror
+    chi2 = mp.fnorm
+
+    return mpp, dTheoryNonErgISF(times,*mpp) ,mpperr,chi2
+
+
 def newFit(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=True,maxiter=600,
            factor=1e-3, quiet=False):
     parinfo = [
@@ -338,6 +395,8 @@ def newFit(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed
     chi2 = mp.fnorm
 
     return mpp, dTheory(times,*mpp) ,mpperr,chi2
+
+
     
 def newFit_ALL(dData, times, params, minpars, maxpars, limitedmin, limitedmax, 
                       fixed, err=None, logfit=True,maxiter=600,

@@ -184,7 +184,88 @@ def getFFTDiffs(imageFile, times, limitImsTo=None, every=None, shiftAtEnd=False,
         j = j+1
 
     return fft_diffs
-    
+
+
+def getFFTDiffsAtTimesBR(imageR, imageB, dts, limitImsTo=None, every=None, shiftAtEnd=False, noshift=False, submean=True):
+    '''
+    This code calculates the image structure function for the series of images
+    in imageFile at the lag times specified in dts.
+    :param imageFile: Either a string specifying the location of the data or the data itself as a numpy array
+    :param dts: 1D array of delay times
+    :param limitImsTo: defaults to None
+    :param every: defaults to None
+    :param shiftAtEnd: defaults to False
+    :param noshift: defaults to False
+    :param submean: defaults to true
+    :return: two numpy arrays: the fft'd data and the list of times
+    '''
+    if isinstance(imageR, np.ndarray) and isinstance(imageB, np.ndarray):
+        imb = imageB
+        imr = imageR
+    elif isinstance(imageB, basestring) or isinstance(imageR, np.ndarray):
+        imb = tiff_file.imread(imageB)
+        imr = tiff_file.imread(imageR)
+    else:
+        print "Not sure what you gave for imageFile"
+        return 0
+    if limitImsTo is not None:
+        imb = imb[:limitImsTo]
+    if every is not None:
+        imb = imb[::every]
+
+    # Determines the dimensions of the data set (number of frames, x- and y-resolution in pixels
+    btimes, bdx, bdy = imb.shape
+    rtimes, rdx, rdy = imr.shape
+
+    # Initializes array for Fourier transforms of differences
+    fft_diffs = np.zeros((len(dts), bdx, bdy), dtype=np.float)
+    fft_diffr = np.zeros((len(dts), rdx, rdy), dtype=np.float)
+
+    steps_in_diffs = np.ceil((dts+1)/ 3.0).astype(np.int)
+
+    j = 0
+
+    if noshift:
+        shiftAtEnd = True
+
+    # Loops over each delay time
+    for k, dt in enumerate(dts):
+
+        if dt % 15 == 0:
+            print "Running dt=%i...\n" % dt
+        if dt == 0:
+            all_diffs = imb[dt:].astype(np.float) - imr[dt:].astype(np.float)
+        # Calculates all differences of images with a delay time dt
+        else:
+            all_diffs = imb[dt:].astype(np.float) - imr[0:(-1 * dt)].astype(np.float)
+
+        # Rather than FT all image differences of a given lag time, only select a subset
+        all_diffs_new = all_diffs[0:-1:steps_in_diffs[k], :, :]
+
+        # Loop through each image difference and FT
+        for i in range(0, all_diffs_new.shape[0]):
+            if shiftAtEnd:
+                temp = np.fft.fft2(all_diffs_new[i] - all_diffs_new[i].mean())
+            else:
+                if submean:
+                    temp = np.fft.fftshift(np.fft.fft2(all_diffs_new[i] - all_diffs_new[i].mean()))
+                else:
+                    temp = np.fft.fftshift(np.fft.fft2(all_diffs_new[i]))
+
+            fft_diffs[j] = fft_diffs[j] + abs(temp * np.conj(temp)) / (rdx * rdy)
+
+        # Divide the running sum of FTs to get the average FT of the image differences of that lag time
+        fft_diffs[j] = fft_diffs[j] / (all_diffs_new.shape[0])
+
+        if shiftAtEnd and not noshift:
+            fft_diffs[j] = np.fft.fftshift(fft_diffs[j])
+
+        # fft_diffs[j] = np.fft.fftshift(np.fft.fft2(all_diffs.mean(axis=0)-all_diffs.mean()))
+        j = j + 1
+
+    return fft_diffs, dts
+
+
 def getFFTDiffsMoreTimes(imageFile, time_start, time_stop, limitImsTo=None, every=None, shiftAtEnd=False, noshift=False, submean=True,
                 returncomp = False):
     if isinstance(imageFile, np.ndarray):
