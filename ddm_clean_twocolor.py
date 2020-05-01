@@ -328,6 +328,9 @@ def dTheory(x,a1,t1,bg,s1,a2,t2,s2):
 
 def dTheoryTwoColors(x,a1,t1,bg1,s1,a2,bg2,a3,bg3):
     #First step: divide up into three chunks
+    '''
+    This is outdated...
+    '''
     num_time_pts = len(x)
     num_time_pts_per_condition = num_time_pts / 3
     times_bb = x[0:num_time_pts_per_condition]
@@ -347,6 +350,27 @@ def dTheoryTwoColors(x,a1,t1,bg1,s1,a2,bg2,a3,bg3):
     d = np.hstack((d_bb,d_rr,d_br))
     return d
 
+def dTheoryThreeSetsSameTau(x,a1,t1,bg1,s1,a2,bg2,a3,bg3):
+    #First step: divide up into three chunks
+    wheretodivide = np.array([10,18])
+
+    times1 = x[0:wheretodivide[0]]
+    times2 = x[wheretodivide[0]:wheretodivide[1]]
+    times3 = x[wheretodivide[1]:]
+    
+    #Calculate 'g' for all three, use same time and alpha
+    g_1 = np.exp(-1 * (times1 / t1)**s1)
+    g_2 = np.exp(-1 * (times2 / t1)**s1)
+    g_3 = np.exp(-1 * (times3 / t1)**s1)
+    
+    #all have different amplitudes and backgrounds
+    d_1 = a1 * (1-g_1) + bg1
+    d_2 = a2 * (1-g_2) + bg2
+    d_3 = a3 * (1-g_3) + bg3
+    
+    d = np.hstack((d_1,d_2,d_3))
+    return d
+
     
 def dTheorySingle(x,a1,t1,bg,s1=1.0):
     g1 = np.exp(-1 * (x / t1))**s1
@@ -354,7 +378,7 @@ def dTheorySingle(x,a1,t1,bg,s1=1.0):
     return d
 
 
-def returnReasonableParamsTwoColors(d=None, fps=40.0, double=True, stretched=True, bg=100):
+def returnReasonableParamsTwoColors(d, fps=40.0, double=True, stretched=True, bg=100):
     '''
     Function to return reasonable parameters for fits
     The parameters are:
@@ -362,35 +386,37 @@ def returnReasonableParamsTwoColors(d=None, fps=40.0, double=True, stretched=Tru
         * decay time
         * background
         * alpha (stretching exponent)
+        * amplitude 2
+        * background 2
+        * amplitude 3
+        * background 3
     :param d:
     :param double:
     :param stretched:
     :return:
     '''
-    num_time_pts = len(d)
-    num_time_pts_per_condition = num_time_pts / 3
-    d_bb = d[0:num_time_pts_per_condition]
-    d_rr = d[num_time_pts_per_condition:2*num_time_pts_per_condition]
-    d_br = d[2*num_time_pts_per_condition:]
+    wheretodivide = np.array([10,18])
+    d1 = d[0:wheretodivide[0]]
+    d2 = d[wheretodivide[0]:wheretodivide[1]]
+    d3 = d[wheretodivide[1]:]
       
     params = np.array([1e2, 1.0, bg, 0.99, 1e2, bg, 1e2, bg])
-    if d is not None:
-        params[2] = bg
-        params[0] = (d_bb.max() - bg)*0.85
-        params[5] = bg
-        params[4] = (d_rr.max() - bg)*0.85
-        params[7] = d_br.min()
-        params[6] = (d_br.max() - d_br.min())*0.9
-    w = np.where((d_bb-params[2])>(0.6*(d_bb.max()-params[2])))
-    if len(w[0])>0:
-        params[1]=1*(w[0][0]/fps)
-    else:
-        params[1] = 1./fps
-    if params[1]==0:
-        params[1]=3./fps
-    minpars = np.array([0, 1e-6, 0, 0.1, 0, 0, 0, 0])
-    maxpars = np.array([1e22, 1e4, 1e18, 2.0, 1e22, 1e18, 1e22, 1e18])
+    
+
+    params[2] = d1.min()
+    params[0] = abs(d1.max() - params[2])*0.85
+    params[5] = d2.min()
+    params[4] = abs(d2.max() - params[5])*0.85
+    params[7] = d3.min()
+    params[6] = abs(d3.max() - params[7])*0.85
+    
+    params[1] = 0.5
+    params[3] = 1.0
+    
+    minpars = np.array([0, 1e-6, 0, 0.8, 0, 0, 0, 0])
+    maxpars = np.array([3000, 10, 2000, 1.01, 3000,2000, 3000,2000])
     fixed = np.repeat(False, len(params))
+    fixed[3] = True
     limitedmin = np.repeat(True, len(params))
     limitedmax = np.repeat(True, len(params))
     
@@ -468,12 +494,12 @@ def newFitTwoColors(dData, times, params, minpars, maxpars, limitedmin, limitedm
         if err is None:
             def f(p, fjac=None):
                 if logfit:
-                    return [0, (np.log(y) - np.log(dTheoryTwoColors(x, *p)))]
+                    return [0, (np.log(y) - np.log(dTheoryThreeSetsSameTau(x, *p)))]
                 else:
-                    return [0, (y - dTheoryTwoColors(x, *p))]
+                    return [0, (y - dTheoryThreeSetsSameTau(x, *p))]
         else:
             def f(p, fjac=None):
-                return [0, (y - dTheoryTwoColors(x, *p)) / err]
+                return [0, (y - dTheoryThreeSetsSameTau(x, *p)) / err]
         return f
     mp = mpfit.mpfit(mpfitfun(times, dData, err, logfit), parinfo=parinfo, quiet=quiet, maxiter=maxiter,factor=factor)
 
@@ -483,7 +509,7 @@ def newFitTwoColors(dData, times, params, minpars, maxpars, limitedmin, limitedm
     mpperr = mp.perror
     chi2 = mp.fnorm
 
-    return mpp, dTheoryTwoColors(times,*mpp) ,mpperr,chi2
+    return mpp, dTheoryThreeSetsSameTau(times,*mpp) ,mpperr,chi2
 
 
 def newFit(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=True,maxiter=600,
@@ -599,10 +625,10 @@ def newFitLeastsqTwoColor(dData, times, params, minpars, maxpars, limitedmin, li
                 j = j+1
 
         if logfit:
-            diff = np.log(y) - np.log(dTheoryTwoColors(x, *newp))
+            diff = np.log(y) - np.log(dTheoryThreeSetsSameTau(x, *newp))
             return diff
         else:
-            diff = y - dTheoryTwoColors(x, *newp)
+            diff = y - dTheoryThreeSetsSameTau(x, *newp)
             return diff
             
     params_adjust = np.repeat(0,len(fixed)-fixed.sum()).astype(np.float)
@@ -623,7 +649,7 @@ def newFitLeastsqTwoColor(dData, times, params, minpars, maxpars, limitedmin, li
             newplsq[i]=plsq[0][j]
             j=j+1
 
-    return newplsq, dTheoryTwoColors(times,*newplsq)
+    return newplsq, dTheoryThreeSetsSameTau(times,*newplsq)
 
     
 def newFitLeastsq(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=True,maxiter=600,
