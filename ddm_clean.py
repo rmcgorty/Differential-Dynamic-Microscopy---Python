@@ -273,6 +273,24 @@ def dTheoryNonErgISF(x,c,t,s):
     d = ((1-c)*g1) + c
     return d
 
+def dTheoryTwoModeISF(x,c,t1,s,t2,a,Z):
+    '''
+    From Wilson et. al PRL 2011
+    
+    x: independent variable: our lag time
+    c: the nonergodicity parameter
+    t1: subdiff. relaxation time (tau)
+    s: stretching exponent ("p" in Cho et al 2020)
+    t2: ballistic relaxation time, 1/qv
+    a: proportion of population that is moving ballistically
+    Z: Schulz distribution number
+    '''
+    theta = (x / t2)/(Z + 1.0)  
+    VDist = ((Z + 1.0)/((Z * x)/t2)) * np.sin(Z*np.arctan(theta))/((1.0 + theta**2.0)**(Z/2.0))
+    g1 = np.exp(-1.0*(x/t1)**s)
+    d = ((1.0-c)*g1*((1.0-a)+a*VDist)) + c
+    return d
+
 
 def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100):
     '''
@@ -321,7 +339,43 @@ def returnReasonableParams(d=None, fps=40.0, double=True, stretched=True, bg=100
     return params, minpars, maxpars, limitedmin, limitedmax, fixed
 
 
+def twomodeFit_ISF(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=False,maxiter=600,
+               factor=1e-3, quiet=False):
+    parinfo = [
+        {'n': 0, 'value': params[0], 'limits': [minpars[0], maxpars[0]], 'limited': [limitedmin[0], limitedmax[0]],
+         'fixed': fixed[0], 'parname': "Nonerg", 'error': 0, 'step':0},
+        {'n': 1, 'value': params[1], 'limits': [minpars[1], maxpars[1]], 'limited': [limitedmin[1], limitedmax[1]],
+         'fixed': fixed[1], 'parname': "tau", 'error': 0, 'step':0},
+        {'n': 2, 'value': params[2], 'limits': [minpars[2], maxpars[2]], 'limited': [limitedmin[2], limitedmax[2]],
+         'fixed': fixed[2], 'parname': "Stretchexp", 'error': 0, 'step':0},
+        {'n': 3, 'value': params[3], 'limits': [minpars[3], maxpars[3]], 'limited': [limitedmin[3], limitedmax[3]],
+         'fixed': fixed[3], 'parname': "tau2", 'error': 0, 'step':0},
+        {'n': 4, 'value': params[4], 'limits': [minpars[4], maxpars[4]], 'limited': [limitedmin[4], limitedmax[4]],
+         'fixed': fixed[4], 'parname': "proportion", 'error': 0, 'step':0},
+        {'n': 5, 'value': params[5], 'limits': [minpars[5], maxpars[5]], 'limited': [limitedmin[5], limitedmax[5]],
+         'fixed': fixed[5], 'parname': "schulz", 'error': 0, 'step':0}
+    ]
 
+    def mpfitfun(x, y, err, logfit):
+        if err is None:
+            def f(p, fjac=None):
+                if logfit:
+                    return [0, (np.log(y) - np.log(dTheoryTwoModeISF(x, *p)))]
+                else:
+                    return [0, (y - dTheoryTwoModeISF(x, *p))]
+        else:
+            def f(p, fjac=None):
+                return [0, (y - dTheoryTwoModeISF(x, *p)) / err]
+        return f
+    mp = mpfit.mpfit(mpfitfun(times, dData, err, logfit), parinfo=parinfo, quiet=quiet, maxiter=maxiter,factor=factor)
+
+    if mp.status == 0:
+        raise Exception(mp.errmsg)
+    mpp = mp.params
+    mpperr = mp.perror
+    chi2 = mp.fnorm
+
+    return mpp, dTheoryTwoModeISF(times,*mpp) ,mpperr,chi2
 
 def newFit_ISF(dData, times, params, minpars, maxpars, limitedmin, limitedmax, fixed, err=None, logfit=False,maxiter=600,
                factor=1e-3, quiet=False):
