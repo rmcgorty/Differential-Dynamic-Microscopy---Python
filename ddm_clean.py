@@ -75,7 +75,7 @@ def getFFTDiffsAtTimes(imageFile, dts, limitImsTo=None, every=None, shiftAtEnd=F
     elif isinstance(imageFile, basestring):
         ims = tiff_file.imread(imageFile)
     else:
-        print "Not sure what you gave for imageFile"
+        print("Not sure what you gave for imageFile")
         return 0
     if limitImsTo is not None:
         ims = ims[:limitImsTo]
@@ -100,7 +100,7 @@ def getFFTDiffsAtTimes(imageFile, dts, limitImsTo=None, every=None, shiftAtEnd=F
     for k,dt in enumerate(dts):
         
         if dt%15 == 0:
-            print "Running dt=%i...\n" % dt
+            print("Running dt=%i...\n" % dt)
 
         #Calculates all differences of images with a delay time dt
         all_diffs = ims[dt:].astype(np.float) - ims[0:(-1*dt)].astype(np.float)
@@ -138,7 +138,7 @@ def getFFTDiffs(imageFile, times, limitImsTo=None, every=None, shiftAtEnd=False,
     elif isinstance(imageFile, basestring):
         ims = tiff_file.imread(imageFile)
     else:
-        print "Not sure what you gave for imageFile"
+        print("Not sure what you gave for imageFile")
         return 0
     if limitImsTo is not None:
         ims = ims[:limitImsTo]
@@ -159,7 +159,7 @@ def getFFTDiffs(imageFile, times, limitImsTo=None, every=None, shiftAtEnd=False,
     for dt in dts:
         
         if dt%15 == 0:
-            print "Running dt=%i...\n" % dt
+            print("Running dt=%i...\n" % dt)
         
         all_diffs = ims[dt:].astype(np.float) - ims[0:(-1*dt)].astype(np.float)
 
@@ -192,7 +192,7 @@ def getFFTDiffsMoreTimes(imageFile, time_start, time_stop, limitImsTo=None, ever
     elif isinstance(imageFile, basestring):
         ims = tiff_file.imread(imageFile)
     else:
-        print "Not sure what you gave for imageFile"
+        print("Not sure what you gave for imageFile")
         return 0
     if limitImsTo is not None:
         ims = ims[:limitImsTo]
@@ -213,7 +213,7 @@ def getFFTDiffsMoreTimes(imageFile, time_start, time_stop, limitImsTo=None, ever
     for dt in dts:
         
         if dt%15 == 0:
-            print "Running dt=%i...\n" % dt
+            print("Running dt=%i...\n" % dt)
         
         all_diffs = ims[dt:].astype(np.float) - ims[0:(-1*dt)].astype(np.float)
 
@@ -993,7 +993,7 @@ def fittingRadAvsWithLogHoldB(radav, times, p0, B, plot=True):
     newp0 = p0.copy()
     #newp0[1] = np.exp(p0[1])
     temp = leastsq(dynamicStructFuncLogErrorHoldB, newp0, args = (newTimes, radav, B))
-    print "temp: ", temp
+    print("temp: ", temp)
     plsq = np.zeros((3,))
     plsq[0:2] = temp[0]
     plsq[2] = B
@@ -1081,7 +1081,7 @@ def fittingAllRadAvs(radavs, times, p0, plotEvery=None, noreset=True, fitWithLog
                     pd2Param[i] = res[0][4]
         if toPlot:
             pylab.title("Fitting..." + str(i).zfill(2) + " ... a1=" + str(res[0][0]))
-        print str(i) + ": ", res
+        print(str(i) + ": ", res)
         aParam[i] = res[0][0]
         tParam[i] = res[0][1]
         bParam[i] = res[0][2]
@@ -1159,7 +1159,7 @@ def fittingAllRadAvsWithLogs(radavs, times, p0, plotEvery=None, reset=True):
         res = fittingRadAvsWithLog(radavs[:,i], times, newp0, plot=toPlot)
         if toPlot:
             pylab.title("Fitting..." + str(i).zfill(2))
-        print str(i) + ": ", res
+        print(str(i) + ": ", res)
         aParam[i] = res[0][0]
         tParam[i] = res[0][1]
         bParam[i] = res[0][2]
@@ -1185,7 +1185,7 @@ def fittingAllRadAvsWithLogsHoldB(radavs, times, p0, B, plotEvery=None, reset=Tr
         res = fittingRadAvsWithLogHoldB(radavs[:,i], times, newp0, B, plot=toPlot)
         if toPlot:
             pylab.title("Fitting..." + str(i).zfill(2))
-        print str(i) + ": ", res
+        print(str(i) + ": ", res)
         aParam[i] = res[0][0]
         tParam[i] = res[0][1]
         bParam[i] = B

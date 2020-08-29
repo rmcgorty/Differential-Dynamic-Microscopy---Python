@@ -92,7 +92,7 @@ def getfittedmins(arr, start, ds):
                 #print len(scipy.arange(0,2*ds+1))
                 pfit = scipy.polyfit(scipy.arange(0,2*ds+1),arr[start[i]-ds:start[i]+ds+1],2)
                 mins[i] = start[i] - ds - (pfit[1] / (2*pfit[0]))
-        print mins[0]
-        print mins[-1]
+        print(mins[0])
+        print(mins[-1])
         return mins
                 
