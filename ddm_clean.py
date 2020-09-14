@@ -650,12 +650,6 @@ def newRadav(im, limangles=False, angRange=None, mask=None, rev=False,
 
 def radialAvFFTs_v2(fft_diff, limangles=False, angRange=None, 
                     mask=None, rev=False):
-	'''
-    if isinstance(fft_diff, basestring):
-        fft_diff_data = np.load(fft_diff)
-    else:
-        fft_diff_data = fft_diff.copy()
-	'''
     radav = newRadav(fft_diff[0])
     ravs = np.zeros((fft_diff.shape[0], len(radav)))
     ravs[0] = radav
