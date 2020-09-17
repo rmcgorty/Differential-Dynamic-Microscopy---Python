@@ -876,11 +876,11 @@ class mpfit:
 
         # Be sure that PARINFO is of the right type
         if parinfo is not None:
-            if type(parinfo) != types.ListType:
+            if type(parinfo) != list:
                 self.errmsg = 'ERROR: PARINFO must be a list of dictionaries.'
                 return
             else:
-                if type(parinfo[0]) != types.DictionaryType:
+                if type(parinfo[0]) != dict:
                     self.errmsg = 'ERROR: PARINFO must be a list of dictionaries.'
                     return
             if ((xall is not None) and (len(xall) != len(parinfo))):
@@ -1427,11 +1427,11 @@ class mpfit:
         nprint = len(x)
         print("Iter ", ('%6i' % iter),"   CHI-SQUARE = ",('%.10g' % fnorm)," DOF = ", ('%i' % dof))
         for i in range(nprint):
-            if (parinfo is not None) and (parinfo[i].has_key('parname')):
+            if (parinfo is not None) and ('parname' in parinfo[i]):
                 p = '   ' + parinfo[i]['parname'] + ' = '
             else:
                 p = '   P' + str(i) + ' = '
-            if (parinfo is not None) and (parinfo[i].has_key('mpprint')):
+            if (parinfo is not None) and ('mpprint' in parinfo[i]):
                 iprint = parinfo[i]['mpprint']
             else:
                 iprint = 1
@@ -1473,18 +1473,18 @@ class mpfit:
             return values
         values = []
         for i in range(n):
-            if (parinfo is not None) and (parinfo[i].has_key(key)):
+            if (parinfo is not None) and (key in parinfo[i]):
                 values.append(parinfo[i][key])
             else:
                 values.append(default)
 
         # Convert to numeric arrays if possible
         test = default
-        if type(default) == types.ListType:
+        if type(default) == list:
             test=default[0]
-        if isinstance(test, types.IntType):
+        if isinstance(test, int):
             values = numpy.asarray(values, int)
-        elif isinstance(test, types.FloatType):
+        elif isinstance(test, float):
             values = numpy.asarray(values, float)
         return values
     
@@ -2281,7 +2281,7 @@ class mpfit:
 
         if self.debug:
             print('Entering calc_covar...')
-        if numpy.rank(rr) != 2:
+        if rr.ndim != 2:
             print('ERROR: r must be a two-dimensional matrix')
             return -1
         s = rr.shape
